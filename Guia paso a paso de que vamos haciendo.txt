@@ -1,0 +1,680 @@
+Ctrl + D = para modificar coincidencias
+Alt + clic izq = modificar varias lineas a la vez
+Alt + shift + hacia abajo = duplica una linea de codigo
+Ctrl + ñ = mostrar terminal/ocultar terminal
+Shift + tab = desplazar linea de codigo a la izquierda
+
+1. Crear el proyecto el laravel "laravel new nombreproyecto"
+tenemos la carpeta 
+2. creamos las terminales 1 para correr el servidor y dejarlo en segundo plano para esto usamos el comando "php artisan serve" y usamos la otra terminal para comandos que vayamos a usar
+3. usamos el comando "composer require laravel/ui" y luego 
+"php artisan ui bootstrap --auth" para crear de forma automatica lo que es la interfaz de registro y inicio de sesion
+4. ahora usaremos npm que es un package manager para javascript, para el frontend del proyecto usaremos html y un poco de javascript, vue
+ahora usaremos el comando "npm install" para que funcione el login y register
+5. nos vamos a .env y configuramos el puerto en este caso estaba en 3306 pero estoy usando 3307 en xamp asi que lo cambiamos a 3307, abrimos xamp y encendemos mysql y apache despues usamos el comando "npm run dev", tambien debemos colocar el nombre de la base de datos
+6. Para trabajar en nuestro front-end es decir nuestro javascript y css lo hacemos en la ruta 
+resources>js>app.js 
+resources>css>app.css
+7. usamos el comando "php artisan migrate" 
+8. Ahora vamos a trabajar en el UI 
+Para esto primero nos vamos al archivo app.blade.php en la carpeta
+resources>views>layouts>app.blade.php
+Primero modificamos la parte del codigo que dice (config app.name Laravel)
+borramos eso y colocamos 
+<div style="padding-left: 10px; border-left: 1px solid #333">RedGram</div>
+arriba de esa linea agregamos una imagen con la linea
+<div><img src="/svg/redlogo.svg" style="height: 25px; padding-right: 10px;"></div>
+
+para que esto funcione tenemos que agregar una carpeta llamada svg en la carpeta public y agregar un archivo que se llame redlogo.svg
+
+ahora la cambiamos <a class="navbar-brand" href="{{ url('/') }}"> esta linea en la barra de navegacion para que nuestro texto y logo esten alineados, colocamos
+<a class="navbar-brand d-flex" href="{{ url('/') }}">
+
+Con esto terminamos de trabajar en nuestra barra de navegacion
+
+9. Ahora vamos al archivo home.blade.php
+resources>views>home.blade.php y realizamos las modificaciones para que nuestra interfaz de home se vea igual a la de wpp, borramos lo que estaba antes y dejamos el div con la class container
+
+modificamos la carpeta resources>sass>app.scss
+agregamos el font de open sans bold
+modificamos la carpeta resources>sass>_variables.scss
+y colocamos la linea
+$font-family-sans-serif: 'Open Sans', sans-serif;
+
+ya terminamos lo que seria el diseño front-end del ui
+
+10. ahora vamos a modificar el registro de usuario para agregarle un username
+vamos a resources>views>auths>register.blade.php
+
+el div que tiene toda la informacion de email lo duplicamos y cambios todo lo k dice email por username
+
+11. Ahora vamos a modificar los controladores del username
+nos vamos a app>http>controllers>auth>registercontroller.php
+en el return validator agregamos el username
+y despues en el return user:create tambien agregamos el username
+
+ahora nos tenemos que crear la tabla en la base de datos con el username
+database>migrations>create_users_table
+y agregamos la linea "$table->string('username')->unique();"
+
+ahora tenemos que usar el comando "php artisan migrate:fresh"
+para que actualice los cambios en nuestra database
+
+ahora vamos a la carpeta
+app>models>user.php
+agregamos username en el $fillable
+
+12. Ahora vamos a cambiar el panel de navegacion para que en vez del name nos muestre el username para eso nos vamos a resources>views>layouts>app.blade.php
+modificamos esta linea {{ Auth::user()->name }} 
+y colocamos el username "{{ Auth::user()->username }}"
+
+13. Ahora vamos a crear el controlador del profile, inicialmente creamos el frontend para copiar instagram pero ahora queremos manejar eso desde el backend
+para eso primero vamos a crear el ProfileController 
+vamos a la terminal y usamos el comando 
+php artisan make:controller ProfileController
+esto nos creara un nuevo controlador
+
+nos vamos al app>http>controller>profilecontroller.php y agregamos esta linea
+class ProfileController extends Controller
+{
+    public function index($user)
+    {
+        $user = User::find($user);
+        return view('home',
+    [
+        'user' => $user,
+    ]);
+    }
+}
+
+Luego nos vamos a routes>web.php
+cambiamos la linea
+Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
+y colocamos
+Route::get('/profile/{user}', [App\Http\Controllers\ProfileController::class, 'index'])->name('profile.show');
+
+finalmente nos vamos a resources>views>home.blade.php
+ahora vamos a modificar la linea que en nuestro front-end mostraba el nombre del perfil Myprofile para que este conectado con el backend y muestre directamente el nombre de perfil con el que se registro el usuario
+cambiamos la linea con myprofile
+<div><h1>Myprofile</h1></div>
+por esta
+<div><h1>{{ $user -> username}}</h1></div>
+
+14. Ahora vamos a crear un nuevo model para la informacion del perfil como la biografia y todo lo demas, para eso vamos a usar el comando
+php artisan make:model Profile -m 
+
+ahora nos vamos a database>migrations>create_profiles_table
+
+y modificamos la tabla 
+public function up()
+    {
+        Schema::create('profiles', function (Blueprint $table) {
+            $table->id();
+            $table->timestamps();
+        });
+    }
+
+la cambiamos por 
+public function up()
+    {
+        Schema::create('profiles', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('user_id');
+            $table->string('title')->nullable();
+            $table->text('description')->nullable();
+            $table->string('url')->nullable();
+            $table->timestamps();
+            
+            $table->index('user_id');
+        });
+    }
+
+despues la vamos a migrar usando el comando "php artisan migrate"
+
+ahora nos vamos a app>models>profile.php y modificamos el codigo para que quede
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+class Profile extends Model
+{
+    /* use HasFactory; */
+    public function user(){
+        return $this->belongsTo(User::class);
+    }
+}   
+
+ahora nos vamos a app>models>user.php 
+nos vamos al fondo y vamos a agregar una nueva funcion
+public function profile(){
+        return $this->hasOne(Profile::class);
+    }
+
+Ahora vamos a introducir los datos del perfil de nuestro usuario a traves de tinker en nuestra terminal, para esto usamos
+
+php artisan tinker
+$profile->title = 'Cool Title';                                                                     
+= "Cool Title"
+
+> $profile->description = 'Description';                                                              
+= "Description"
+
+> $profile->user_id = 1;                                                                              
+= 1
+
+> $profile->save();                                                                                   
+= true
+
+Ahora nos vamos a nuestro archivo resources>views>home.blade.php
+
+vamos a modificar las lineas que habiamos escrito con el titulo, la descripcion y la url y vamos a cambiarlas por
+<div style="padding-top: 30px; font-weight: bold;">{{ $user -> profile -> title}}</div>
+            <div>{{ $user -> profile -> description}}</div>
+            <div><a href="#">{{ $user -> profile -> url}}</a></div>
+
+ahora vamos a app>http>controllers>profilecontrollers.php
+y vamos a modificar la clase que creamos para que cuando el usuario entre a una pagina que no existe me muestre un mensaje error 404 not found
+
+class ProfileController extends Controller
+{
+    public function index($user)
+    {
+        $user = User::findOrFail($user);
+        return view('home',
+    [
+        'user' => $user,
+    ]);
+    }
+}
+
+15. Ahora vamos a crear el modelo para los posts de nuestra aplicacion
+nos vamos a la terminal y usamos "php artisan make:model Post -m"
+
+ahora nos vamos a database>migrations>create_post_table
+y modificamos la function up
+
+public function up()
+    {
+        Schema::create('posts', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('user_id');
+            $table->string('caption');           
+            $table->string('image');
+            $table->timestamps();
+
+            $table->index('user_id');
+        });
+    }
+
+ahora nos vamos a la terminal para migrar los cambios realizados, usamos el comando "php artisan migrate"
+
+ahora vamos a crear la funcion para los post nos vamos a app>models>user.php
+creamos una nueva funcion
+public function posts(){
+        return $this->hasMany(Post::class);
+    }
+
+ahora nos vamos a app>models>post.php y agregamos
+class Post extends Model
+{
+    /*use HasFactory;*/
+    public function user(){
+        return $this->belongsTo(User::class);
+    }
+}
+
+ahora nos vamos a resources>views>home.blade.php para agregar un boton que nos permita agregar posts
+debajo de username modificamos
+<div class="d-flex justify-content-between align-items-baseline">
+                <h1>{{ $user -> username}}</h1>
+                <a href="#">Add New Post</a>
+            </div>
+
+ahora nos vamos a routes>web.php y agregamos la ruta
+Route::get('/p/create', 'PostsController@create');
+esta ruta esta mal hay que colocar la ruta completa para que funcione bien
+Route::get('/p/create', 'App\Http\Controllers\PostsController@create'); 
+
+ahora vamos a la terminal para crear el controlador introducimos
+php artisan make:controller PostsController
+
+ahora nos vamos a app>http>controllers>postscontroller.php 
+y agregamos
+class PostsController extends Controller
+{
+    public function create(){
+        return view('posts/create'); /*puedes colocar posts/create o posts.create*/
+    }
+}
+
+ahora creamos una nueva carpeta que se llamara posts dentro del directorio views
+y luego otra carpeta que se llame profiles, y ahora vamos a mover el home.blade.php a profiles porque lo que estabamos creando ahi era en realidad un perfil osea que no tendria sentido que fuera nuestro home 
+y le vamos a cambiar el nombre a home.blade.php y le colocamos index.blade.php
+
+ahora nos vamos a app>http>controllers>profilecontroller y modificamos
+class ProfileController extends Controller
+{
+    public function index($user)
+    {
+        $user = User::findOrFail($user);
+        return view('profiles.index',
+    [
+        'user' => $user,
+    ]);
+    }
+}
+
+ahora copiamos la carpeta index.blade.php en posts y le cambiamos el nombre a create.blade.php y borramos todo y dejamos 
+@extends('layouts.app')
+
+@section('content')
+<div class="container">
+   
+</div>
+@endsection
+
+ojo que en el router>web.php
+hay que colocar la ruta completa
+
+ahora nos vamos a resources>views>posts>create.blade.php
+creamos el codigo para que se puedan cargar posts, con un caption y una imagen
+
+ahora nos vamos a routes>web.php y agregamos la linea de codigo
+Route::post('/p', 'App\Http\Controllers\PostsController@store');
+
+ahora vamos a app>http>controllers>postscontroller.php y agregamos la funcion
+public function store()
+    public function store()
+    {
+        $data = request()->validate([
+            'caption' => 'required',
+            'image' => ['required', 'image'],
+        ]);
+
+        auth()->user()->posts()->create($data);
+
+        dd(request()->all());
+    }
+
+y tambien agregamos la funcion __construct para autenticar el usuario
+{
+        $this->middleware('auth');
+    }
+
+
+ahora nos vamos a app>models>post.php y modificamos
+class Post extends Model
+{
+    protected $guarded = [];
+
+    /*use HasFactory;*/
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+}
+
+
+16. ahora vamos a cargar y guardar la imagen para esto nos vamos a 
+app>http>controllers>PostsController.php y modificamos 
+public function store()
+    {
+        $data = request()->validate([
+            'caption' => 'required',
+            'image' => ['required', 'image'],
+        ]);
+
+        $imagePath = (request('image')->store('uploads', 'public'));
+
+        auth()->user()->posts()->create([
+            'caption' => $data['caption'],
+            'image' => $imagePath,
+        ]);
+
+        return redirect('/profile/' . auth()->user()->id);
+    }
+
+ahora nos vamos a la terminal y introducimos "php artisan storage:link"
+
+ahora nos vamos a resources>views>profiles>index.blade.php
+donde estaban los posts modificamos el codigo para que ahora este conectado con la pagina que creamos para los posts
+
+<div class="row">
+            @foreach ($user->posts as $post)
+                <div class="col-4 pt-5" style="max-width: 300px; max-height: 300px; overflow: hidden;">
+                    <img src="/storage/{{ $post->image }}" style="width: 100%; height: 100%;">
+                </div>
+            @endforeach
+
+luego modificamos el boton que habiamos creado para que nos lleve a la pagina donde creamos los posts "<a href="/p/create">Add New Post</a>"
+
+ahora nos vamos a app>models>user.php y vamos a modificar la funcion de posts para que los publique en orden descendiente es decir que salgan primero los ultimos para esto modificamos:
+public function posts()
+    {
+        return $this->hasMany(Post::class)->orderBy('created_at', 'DESC');
+    }
+
+ahora vamos a cambiar el conteo de posts que antes lo tenias hardcoded ahora lo vamos a conectar con el backend para que nos muestre el conteo real de posts modificamos: 
+<div style="padding-right: 30px;"><strong>{{ $user->posts->count() }}</strong> posts</div>
+
+17. Ahora vamos a descargar una libreria externa de php para cambiar el tamaño de las imagenes que cargamos en los post
+
+nos vamos a la terminal y introducimos "composer require intervention/image"
+
+ahora nos vamos a app>http>controllers>PostControllers.php
+y vamos a agrager: 
+
+use Intervention\Image\Facades\Image;
+
+$imagePath = (request('image')->store('uploads', 'public'));
+
+        $image = Image::make(public_path("storage/{$imagePath}"))->fit(1200,1200);
+        $image->save();
+
+ahora nos vamos a resources>views>profiles>index.blade.php
+en donde tenemos la imagen ahora vamos a agregar un link para que nos deje ver el caption para esto modificamos:
+
+@foreach ($user->posts as $post)
+                <div class="col-4 pt-4" style="max-width: 300px; max-height: 300px; overflow: hidden;">
+                    <a href="/p/{{ $post->id }}">
+                        <img src="/storage/{{ $post->image }}" style="width: 100%; height: 100%;">
+                    </a>
+                </div>
+            @endforeach
+
+18. Ahora vamos a crear el route model binding para manejar el controlador y que al dar clic a la imagen se nos abra la imagen con el caption como sale en instagram
+
+ahora nos vamos a routes>web.php
+agregamos: Route::get('/p/{post}', 'App\Http\Controllers\PostsController@show');
+
+ahora nos vamos a app>http>controllers>PostController.php
+agregamos la funcion
+public function show(\App\Models\Post $post)
+    {
+        return view('posts.show', compact('post'));
+    }
+
+ahora nos vamos a resources>views>posts>create.blade.php copiamos este archivo y lo pegamos ahi mismo y le cambiamos el nombre a 
+resources>views>posts>show.blade.php
+y modificamos:
+@extends('layouts.app')
+
+@section('content')
+    <div class="container">
+        <div class="row">
+            <div class="col-8">
+                <img src="/storage/{{ $post->image }}" class="w-100">
+            </div>
+            <div class="col-4">
+                <h3>{{ $post->user->username }}</h3>
+                <p>{{ $post->caption }}</p>
+            </div>
+        </div>
+    </div>
+@endsection
+
+19. Ahora vamos a crear la configuracion para que nos permita editar nuestro perfil
+nos vamos index.blade.php y agregamos el link
+<div><a href="/profile/{{ $user->id }}/edit">Edit Profile</a></div>
+
+ahora nos vamos a web.php y agregamos la ruta 
+Route::get('/profile/{user}/edit', [App\Http\Controllers\ProfileController::class, 'edit'])->name('profile.edit');
+
+ahora nos vamos al ProfileControler.php
+y modificamos:
+class ProfileController extends Controller
+{
+    public function index(User $user)
+    {
+        return view('profiles.index', compact('user'));
+    }
+
+    public function edit(User $user)
+    {
+        return view('profiles.edit', compact('user'));
+    }
+}
+
+ahora creamos un archivo que se llame edit en la carpeta de resources>views>profiles y desde el archivo de create.blade.php nos copiamos todo el form
+y ahora modificamos:
+<form action="/profile/{{ $user->id }}" enctype="multipart/form-data" method="post">
+            @csrf
+            @method('PATCH')
+
+cuando vamos a actualizar informacion usamos POST y usamos el metodo patch
+
+ahora vamos a crear la ruta y nos vamos a web.php y agregamos:
+Route::patch('/profile/{user}', [App\Http\Controllers\ProfileController::class, 'update'])->name('profile.update');
+
+ahora nos vamos a edit.blade.php
+y modificamos para que corresponda a nuestro edit 
+
+ahora nos vamos al ProfileController.php
+y agregamos:
+public function update(User $user)
+    {
+        $data = request()->validate([
+            'title' => 'required',
+            'description' => 'required',
+            'url' => 'url',
+            'image' => '',
+
+        ]);
+
+        $user->profile->update($data);
+
+        return redirect("profile/{$user->id}");
+    }
+
+Ahora nos vamos a profile.php y modificamos
+class Profile extends Model
+{
+    protected $guarded = [];
+    /* use HasFactory; */
+    public function user(){
+        return $this->belongsTo(User::class);
+    }
+}   
+
+ahora nos vamos a ProfileController.php y modificamos: 
+auth()->user->profile->update($data);
+
+para que no se pueda editar el perfil sin autorizacion
+
+20. ahora vamos a crear una policy para que el boton de edit profile no se nos muestre a menos que seamos un usuario autenticado para esto primero usamos:
+php artisan make:policy ProfilePolicy -m Profile
+
+ahora nos vamos a ProfilePolicy.php y modificamos:
+public function update(User $user, Profile $profile)
+    {
+        return $user->id == $profile->user_id;
+    }
+
+Ahora nos vamos ProfileController.php y agregamos la linea:
+$this->authorize('update', $user->profile);
+en la funcion edit y en la funcion update 
+
+ahora nos vamos index.blade.php y modificamos la linea donde esta el edit:
+@can('update', $user->profile)
+                    <a href="/profile/{{ $user->id }}/edit">Edit Profile</a>
+                @endcan
+
+ahora solo se muestra cuando el usuario esta validado
+ahora vamos a hacer lo mismo con el boton de Add New Post vamos a modificarlo para que solo se pueda ver cuando el usuario este autenticado:
+@can('update', $user->profile)
+                        <a href="/p/create">Add New Post</a>
+                    @endcan
+
+ahora tenemos un problema con las rutas el boton para crear un nuevo post no esta funcionando porque la ruta {post} esta primera y entra en conflicto con la del nuevo post, para corregir esto vamos a cambiar el orden de las rutas y vamos a dejar a la ruta con el post de ultimo:
+Route::get('/p/create', 'App\Http\Controllers\PostsController@create');
+Route::post('/p', 'App\Http\Controllers\PostsController@store');
+Route::get('/p/{post}', 'App\Http\Controllers\PostsController@show');
+
+21. Ahora vamos a modificar el codigo para que la imagen de nuestro usuario quede guardada y se pueda modificar
+nos vamos a ProfileController.php y modificamos: 
+public function update(User $user)
+    {
+        $this->authorize('update', $user->profile);
+        $data = request()->validate([
+            'title' => 'required',
+            'description' => 'required',
+            'url' => 'url',
+            'image' => '',
+
+        ]);
+
+
+
+        if (request('image')) {
+            $imagePath = (request('image')->store('profile', 'public'));
+
+            $image = Image::make(public_path("storage/{$imagePath}"))->fit(1000, 1000);
+            $image->save();
+        }
+
+
+        auth()->user()->profile->update(array_merge(
+            $data,
+            ['image' => $imagePath]
+        ));
+
+        return redirect("profile/{$user->id}");
+    }
+
+ahora nos vamos a create_profiles_table.php y agregamos la imagen para eso modificamos:
+public function up()
+    {
+        Schema::create('profiles', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('user_id');
+            $table->string('title')->nullable();
+            $table->text('description')->nullable();
+            $table->string('url')->nullable();
+            $table->image('image')->nullable();
+            $table->timestamps();
+
+            $table->index('user_id');
+        });
+    }
+
+ahora nos vamos a la terminal y usamos: "php artisan migrate:fresh"
+
+22. Ahora vamos a crear el modelo para que cuando nos registremos automaticamente se cree un perfil 
+nos vamos a user.php y agregamos la funcion:
+protected static function boot()
+    {
+        parent::boot();
+        static::created(function ($user) {
+            $user->profile()->create([
+                'title' => $user->username,
+            ]);
+        });
+    }
+
+despues nos vamos a la terminal y usamos: "php artisan migrate:fresh"
+ahora ya podemos registrarnos y modificar nuestro perfil
+
+ahora para poder modificar nuestra imagen de perfil nos vamos al index.blade.php
+y donde tenemos la imagen hardcoded modificamos por:
+<div class="col-3 d-flex justify-content-center">
+                <img src="/storage/{{ $user->profile->image }}" class="rounded-circle align-self-center"
+                    style="width: 150px; height: 150px;">
+            </div>
+
+ahora nos vamos a show.blade.php y modificamos:
+<div class="col-4">
+                <div>
+                    <div>
+                        <img src="/storage/{{ $post->user->profile->image }}" class="rounded-circle w-100">
+                    </div>
+                    <div>
+                        <h3>{{ $post->user->username }}</h3>
+                    </div>
+                </div>
+
+                <p>{{ $post->caption }}</p>
+            </div>
+
+y seguimos modificando todo para que quede conectado al back-end
+
+23. ahora vamos a configurar el codigo para que al registrar un nuevo usuario me salga una imagen de usuario por default 
+
+primero nos vamos al profile.php y modificamos:
+public function profileImage()
+    {
+        $imagePath = ($this->image) ? $this->image : 'profile/kQzQWeH1ov3i4n64NWVr3or1MfS4wD9lEyRX0SIH.jpg';
+        return '/storage/' . $imagePath;
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
+ahora nos vamos a show.blade.php y cambiamos donde teniamos la imagen por:
+<img src="{{ $post->user->profile->profileImage() }}" class="rounded-circle w-100"
+
+ahora nos vamos a index.blade.php y donde tengamos la imagen de perfil hacemos lo mismo cambiamos: 
+<img src="{{ $user->profile->profileImage() }}" class="rounded-circle align-self-center"
+
+ahora nos vamos al ProfileController.php y modificamos:
+if (request('image')) {
+            $imagePath = (request('image')->store('profile', 'public'));
+
+            $image = Image::make(public_path("storage/{$imagePath}"))->fit(1000, 1000);
+            $image->save();
+
+            $imageArray = ['image' => $imagePath];
+        }
+
+
+        auth()->user()->profile->update(array_merge(
+            $data,
+            $imageArray ?? []
+        ));
+
+
+
+
+24. Ahora vamos a configurar para que funcione el boton de followers
+Primero nos vamos a index.blade.php a la parte donde esta nombre del usuario y agregamos un boton usando el componente Vue al lado:
+<div class="d-flex pb-3">
+                        <h1 style="padding-right: 30px;">{{ $user->username }}</h1>
+                        <follow-button></follow-button>
+                    </div>
+
+ahora nos vamos a app.js a configurar el componente vue, para eso agregamos:
+Vue.component('follow-button', require('./components/FollowButton.vue').default);
+
+ahora nos vamos a resources>js creamos una carpeta que se llame components y dentro creamos el archivo FollowButton.vue y en el archivo escribimos:
+<template>
+    <div>
+        <button class="btn btb-primary" style="background-color: rgb(62, 62, 244); color: white;">
+            Follow
+        </button>
+
+    </div>
+</template>
+
+<script>
+export default {
+    mounted() {
+        console.log('Component mounted.')
+    }
+}
+</script>
+
+ahora nos vamos al package.json y agregamos en los scripts:
+"watch": "vite build --watch"
+
+ahora nos vamos a la terminal y corremos nuevamente "npm run watch"
+este comando es igual a npm run dev pero la diferencia es que vuelve a correr el npm run dev cada vez que realizamos modificaciones 
+
+ahora usamos npms install vue
+
+
+
+
