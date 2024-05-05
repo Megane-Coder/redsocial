@@ -1,8 +1,15 @@
 import './bootstrap';
 
-const app = new Vue({
-    el: '#app', // o cualquier otro selector que coincida con el contenedor de tu aplicación
-    // Otros componentes, opciones, etc.
+import { createApp } from 'vue';
+import FollowButton from './components/FollowButton.vue';
+
+const app = createApp({
+    // Configuración de la aplicación, como componentes, opciones globales, etc.
 });
 
-Vue.component('follow-button', require('./components/FollowButton.vue').default);
+app.component('follow-button', FollowButton);
+
+app.mount('#app'); // Monta la aplicación en el elemento con el id 'app' o en cualquier otro selector que desees utilizar
+
+
+

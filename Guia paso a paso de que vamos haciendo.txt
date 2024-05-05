@@ -640,40 +640,396 @@ if (request('image')) {
 
 
 24. Ahora vamos a configurar para que funcione el boton de followers
-Primero nos vamos a index.blade.php a la parte donde esta nombre del usuario y agregamos un boton usando el componente Vue al lado:
-<div class="d-flex pb-3">
+primero usamos "php install ui vue"
+corremos nuevamente npm install y npm run dev
+
+ahora nos vamos a index.blade.php a la parte donde esta nombre del usuario y agregamos un boton usando el componente Vue al lado:
+
+div class="d-flex justify-content-between align-items-baseline">
+
+                    <div class="d-flex pb-3" id="app">
                         <h1 style="padding-right: 30px;">{{ $user->username }}</h1>
-                        <follow-button></follow-button>
+                        <follow-button user-id="{{ $user->id }}"></follow-button>
+
                     </div>
 
 ahora nos vamos a app.js a configurar el componente vue, para eso agregamos:
-Vue.component('follow-button', require('./components/FollowButton.vue').default);
+
+import { createApp } from 'vue';
+import FollowButton from './components/FollowButton.vue';
+
+const app = createApp({
+    // Configuración de la aplicación, como componentes, opciones globales, etc.
+});
+
+app.component('follow-button', FollowButton);
+
+app.mount('#app');
+
 
 ahora nos vamos a resources>js creamos una carpeta que se llame components y dentro creamos el archivo FollowButton.vue y en el archivo escribimos:
 <template>
     <div>
-        <button class="btn btb-primary" style="background-color: rgb(62, 62, 244); color: white;">
-            Follow
-        </button>
-
+        <button class="btn btn-primary" @click="followUser">Follow</button>
     </div>
 </template>
 
 <script>
-export default {
-    mounted() {
-        console.log('Component mounted.')
+import axios from 'axios';
+
+    export default {
+        props: ['userId'],
+
+        mounted() {
+            console.log('Component mounted.')
+        },
+
+        methods: {
+            followUser(){
+                axios.post('/follow/' + this.userId).then(response => {alert(response.data);
+                });
+            }
+        }
     }
-}
 </script>
 
-ahora nos vamos al package.json y agregamos en los scripts:
-"watch": "vite build --watch"
 
-ahora nos vamos a la terminal y corremos nuevamente "npm run watch"
-este comando es igual a npm run dev pero la diferencia es que vuelve a correr el npm run dev cada vez que realizamos modificaciones 
+ahora vamos a web.php para crear la ruta  de la funcion follow para eso nos vamos a web.php y agregamos:
+Route::post('follow/{user}', 'App\Http\Controllers\FollowsController@store');
 
-ahora usamos npms install vue
+
+ahora vamos a crear el controlador de esa ruta, entonces nos vamos a la terminal y introducimos "php artisan make:controller FollowsController"
+
+25. Crear la many to many relationship
+antes habiamos usado una foreign key para las relaciones pero ahora como es many-to-many vamos a crear una nueva tabla usando el comando 
+"php artisan make:migration creates_profile_user_pivot_table --create profile_user"
+
+profile_user !aqui colocamos los dos objetos que queremos que tengan la relacion many-to-many en este caso el profile y el user, los colocamos en orden alfabetico y en minuscula
+
+ahora nos vamos a la tabla que acabamos de crear profile_user_pivot.php y modificamos:
+Schema::create('profile_user', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('profile_id');
+            $table->unsignedBigInteger('user_id');
+            $table->timestamps();
+        });
+
+ahora usamos "php artisan migrate"
+
+ahora nos vamos a user.php y agregamos
+ public function following(){
+        return $this->belongsToMany(Profile::class);
+    }
+
+ahora nos vamos a profile.php y agregamos
+public function followers()
+    {
+        return $this->belongsToMany(User::class);
+    }
+
+ahora nos vamos a profilecontroller.php y modificamos:
+public function index(User $user)
+    {
+        $follows = (auth()->user()) ? auth()->user()->following->contains($user->id) : false;
+
+        return view('profiles.index', compact('user', 'follows'));
+    }
+
+
+ahora nos vamos a followscontroller.php y modificamos
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\User;
+use Illuminate\Http\Request;
+
+class FollowsController extends Controller
+{
+    public function __construct()
+    {
+        $this->middleware('auth');
+    }
+    public function store(User $user)
+    {
+        return auth()->user()->following()->toggle($user->profile);
+    }
+}
+
+ahora nos vamos al index.blade.php y modificamos:
+<div class="d-flex pb-3" id="app">
+                        <h1 style="padding-right: 30px;">{{ $user->username }}</h1>
+                        <follow-button user-id="{{ $user->id }}" follows="{{ $follows }}"></follow-button>
+
+                    </div>
+
+ahora nos vamos al followbutton.vue y modificamos:
+export default {
+        props: ['userId', 'follows'],
+
+        mounted() {
+            console.log('Component mounted.')
+        },
+
+        data: function(){
+            return{
+                status: this.follows,
+            }
+        },
+
+        methods: {
+            followUser(){
+                axios.post('/follow/' + this.userId).then(response => {
+                    this.status = !this.status;
+                    console.log(response.data);
+                })
+                .catch(errors =>{
+                    if(errors.response.status == 401){
+                        window.location = '/login';
+                    }
+                });
+            }
+        },
+
+        computed: {
+            buttonText(){
+                return (this.status) ? 'Unfollow' : 'Follow'
+            }
+        }
+
+26. ahora vamos a cambiar la parte donde aparece el conteo de seguidores y seguidos que estaba hardcoded lo vamos a colocar desde el backend
+nos vamos a index.blade.php y modificamos:
+ <div style="padding-right: 30px;"><strong>{{ $user->profile->followers->count() }}</strong> followers
+                    </div>
+                    <div style="padding-right: 30px;"><strong>{{ $user->following->count() }}</strong> following</div>
+                </div>
+
+27. ahora vamos a agregar la funcion telescope para eso usamos el comando 
+"composer require laravel/telescope"
+ahora usamos "php artisan telescope:install"
+
+Laravel Telescope es una herramienta poderosa que facilita la depuración y el análisis de aplicaciones Laravel, lo que te ayuda a identificar y solucionar problemas más rápidamente y a optimizar el rendimiento de tu aplicación. Es una herramienta recomendada para desarrolladores que trabajan con aplicaciones Laravel de cualquier tamaño.
+
+28. ahora cada vez que usamos el login de la aplicacion nos manda a una pagina de home que no existe ahora vamos a corregir esto para que nos mande a una pagina de inicio donde puedo ver los posts de la gente que estoy siguiendo 
+
+primero nos vamos a logincontroller.php y modificamos:
+    use AuthenticatesUsers;
+
+    /**
+     * Where to redirect users after login.
+     *
+     * @var string
+     */
+    protected $redirectTo = '/';
+
+ahora nos vamos a web.php y modificamos:
+Route::get('/', 'App\Http\Controllers\PostsController@index');
+
+borramos lo que tenia antes esta ruta 
+
+ahora nos vamos al postscontroller.php y agregamos:
+public function index()
+    {
+        $users = auth()->user()->following()->pluck('profiles.user_id');
+
+        $posts = Post::whereIn('user_id', $users)->orderBy('created_at', 'DESC')->get();
+        return view('posts.index', compact('posts'));
+    }
+
+ahora nos vamos a la carpeta posts donde esta create.blade.php y copiamos este archivo y lo pegamos en la misma carpeta pero le cambiamos el nombre a index.blade.php y modificamos:
+@extends('layouts.app')
+
+@section('content')
+    <div class="container">
+        @foreach ($posts as $post)
+            <div class="row">
+                <div class="col-6 offset-3">
+                    <a href="/profile/{{ $post->user->id }}">
+                        <img src="/storage/{{ $post->image }}" class="w-100"></a>
+                </div>
+
+                <div class="row pt-2 pb-4">
+                    <div class="col-6 offset-3">
+                        <div>
+                            <p><span style="font-weight: bold;"><a href="/profile/{{ $post->user->id }}"
+                                        style="text-decoration: none;"><span
+                                            class="text-dark">{{ $post->user->username }}</span></a></span>
+                                {{ $post->caption }}</p>
+                        </div>
+                    </div>
+                </div>
+        @endforeach
+
+    </div>
+@endsection
+
+
+29. Pagination con elocuent, como en la pagina de inicio vamos a ver los posts vamos a usar pagination para que no nos salgan cientos de posts de una sino que nos salgan de a 5 en 5 y vayan cargando mas
+
+primero nos vamos al PostsController.php y modificamos:
+public function index()
+    {
+        $users = auth()->user()->following()->pluck('profiles.user_id');
+
+        $posts = Post::whereIn('user_id', $users)->latest()->paginate(5);
+        return view('posts.index', compact('posts'));
+    }
+
+luego nos vamos al index.blade.php que esta en la carpeta posts y agregamos despues del endforeach:
+
+<div class="row">
+            <div class="col-12 d-flex justify-content-center">
+                {{ $posts->links('pagination::bootstrap-4') }}
+            </div>
+        </div>
+
+despues nos vamos al app.blade.php y agregamos en el head: 
+<link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+
+30. n + 1 problem 
+
+primero nos vamos al postscontroller.php y modificamos:
+public function index()
+    {
+        $users = auth()->user()->following()->pluck('profiles.user_id');
+
+        $posts = Post::whereIn('user_id', $users)->with('user')->latest()->paginate(5);
+        return view('posts.index', compact('posts'));
+    }
+
+31. vamos a configurar para que cada 30 segundos se actualicen el conteo de seguidores y seguidos
+
+primero nos vamos al index.blade.php del profile y modificamos:
+<div class="d-flex">
+                    <div style="padding-right: 30px;"><strong>{{ $postCount }}</strong> posts</div>
+                    <div style="padding-right: 30px;"><strong>{{ $followersCount }}</strong> followers</div>
+                    <div style="padding-right: 30px;"><strong>{{ $followingCount }}</strong> following</div>
+                </div>
+
+ahora nos vamos al profilecontroller.php y modificamos:
+public function index(User $user)
+    {
+        $follows = (auth()->user()) ? auth()->user()->following->contains($user->id) : false;
+
+        $postCount = $user->posts->count();
+        $followersCount = $user->profile->followers->count();
+        $followingCount = $user->following->count();
+
+        return view('profiles.index', compact(
+            'user',
+            'follows',
+            'postCount',
+            'followersCount',
+            'followingCount'
+        ));
+    }
+
+public function index(User $user)
+    {
+        $follows = (auth()->user()) ? auth()->user()->following->contains($user->id) : false;
+
+        $postCount = Cache::remember(
+            'count.posts.' . $user->id,
+            now()->addSeconds(30),
+            function () use ($user) {
+                return $user->posts->count();
+            }
+        );
+
+        $followersCount = Cache::remember(
+            'count.followers.' . $user->id,
+            now()->addSeconds(30),
+            function () use ($user) {
+                return $user->profile->followers->count();
+            }
+        );
+
+        $followingCount = Cache::remember(
+            'count.following.' . $user->id,
+            now()->addSeconds(30),
+            function () use ($user) {
+                return $user->following->count();
+            }
+        );
+
+        return view('profiles.index', compact(
+            'user',
+            'follows',
+            'postCount',
+            'followersCount',
+            'followingCount'
+        ));
+    }
+
+32. Ahora vamos a configurar el proyecto para enviar email cuando un usuario se registre
+
+primero nos vamos a registrar en mailtrap, yo ingrese con la cuenta de github
+en este caso usare una version demo porque para enviar emails a otro hay que ingresar un dominio y verificarlo
+
+ahora nos vamos al archivo .env y modificamos:
+MAIL_MAILER=smtp
+MAIL_HOST=sandbox.smtp.mailtrap.io
+MAIL_PORT=2525
+MAIL_USERNAME=5116eeb2e14099
+MAIL_PASSWORD=71a8a680199d2f
+
+ahora nos vamos a la terminal y escribimos 
+"php artisan make:mail NewUserWelcomeMail -m emails.welcome-email"
+
+ahora nos vamos a web.php y vamos a agregar una ruta tempora para poder ver como quedaria el mensaje que queremos enviar por correo:
+
+Route::get('/email', function () {
+    return new NewUserWelcomeMail();
+});
+
+ahora podemos ver el mensaje en nuestro proyecto si introducimos en el explorador:
+http://127.0.0.1:8000/email
+
+ahora nos vamos a el archivo welcome-email.blade.php y modificamos:
+<x-mail::message>
+    # Welcome to RedGram
+
+    This is a community of fellow animal lovers and we love that you have joined us.
+
+
+    All the best,
+    Eric
+</x-mail::message>
+
+ahora nos vamos a user.php y modificamos: 
+protected static function boot()
+    {
+        parent::boot();
+        static::created(function ($user) {
+            $user->profile()->create([
+                'title' => $user->username,
+            ]);
+
+            Mail::to($user->email)->send(new NewUserWelcomeMail());
+        });
+    }
+
+y tambien agregamos: 
+use Illuminate\Support\Facades\Mail;
+
+ahora tenemos que volver a correr el servidor con php artisan serve y listo ya podemos registrarnos y nos llegara un mensaje de bienvenida.
+
+33. Ahora vamos a modificar el registercontroller.php para que al momento de registrarnos nos redirija a nuestro perfil y modificamos:
+
+protected function redirectTo()
+    {
+        return '/profile/' . Auth::user()->id;
+    }
+
+
+
+
+
+
+
+
+
+
 
 
 

@@ -13,16 +13,20 @@
     <!-- Fonts -->
     <link rel="dns-prefetch" href="//fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=Nunito" rel="stylesheet">
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+
 
     <!-- Scripts -->
     @vite(['resources/sass/app.scss', 'resources/js/app.js'])
+
+
 </head>
 
 <body>
     <div id="app">
         <nav class="navbar navbar-expand-md navbar-light bg-white shadow-sm">
             <div class="container">
-                <a class="navbar-brand d-flex" href="#">
+                <a class="navbar-brand d-flex" href="/">
                     <div><img src="/svg/redlogo.svg" style="height: 25px; padding-right: 10px;"></div>
                     <div style="padding-left: 10px; border-left: 1px solid #333">RedGram</div>
                 </a>

@@ -12,7 +12,8 @@
 
                     <div class="d-flex pb-3" id="app">
                         <h1 style="padding-right: 30px;">{{ $user->username }}</h1>
-                        <follow-button></follow-button>
+                        <follow-button user-id="{{ $user->id }}" follows="{{ $follows }}"></follow-button>
+
                     </div>
 
 
@@ -28,9 +29,9 @@
                 @endcan
 
                 <div class="d-flex">
-                    <div style="padding-right: 30px;"><strong>{{ $user->posts->count() }}</strong> posts</div>
-                    <div style="padding-right: 30px;"><strong>23k</strong> followers</div>
-                    <div style="padding-right: 30px;"><strong>212</strong> following</div>
+                    <div style="padding-right: 30px;"><strong>{{ $postCount }}</strong> posts</div>
+                    <div style="padding-right: 30px;"><strong>{{ $followersCount }}</strong> followers</div>
+                    <div style="padding-right: 30px;"><strong>{{ $followingCount }}</strong> following</div>
                 </div>
                 <div style="padding-top: 30px; font-weight: bold;">{{ $user->profile->title }}</div>
                 <div>{{ $user->profile->description }}</div>
